@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f8a4c">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Calculadora de Talões</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: uma coluna estilo ficha de produção — grade de lançamento no topo, totais por tamanho abaixo, histórico de talões no fim */
+:root{
+  --bg:#eef0ec; --card:#ffffff; --ink:#1f2622; --muted:#66706a; --line:#d5dad4;
+  --go:#1f8a4c; --go-ink:#ffffff; --accent:#c4581d; --danger:#c23b3b; --field:#f6f7f4;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"Barlow",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#151916; --card:#1e2420; --ink:#e7ebe6; --muted:#9aa49d; --line:#323a35;
+  --go:#2fa363; --go-ink:#0d1410; --accent:#e5824a; --danger:#e06060; --field:#262d28; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#151916; --card:#1e2420; --ink:#e7ebe6; --muted:#9aa49d; --line:#323a35;
+  --go:#2fa363; --go-ink:#0d1410; --accent:#e5824a; --danger:#e06060; --field:#262d28; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;margin:0}
+.wrap{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:18px 40px;display:grid;gap:16px}
+header{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--display);font-size:2rem;line-height:1;margin:0;letter-spacing:.01em;text-wrap:balance}
+.sub{color:var(--muted);font-size:.9rem;margin-top:4px}
+.big{text-align:right}
+.big b{display:block;font-family:var(--mono);font-size:2.2rem;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
+.big span{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:14px}
+h2{font-family:var(--display);font-size:1.15rem;margin:0;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.ref{display:flex;gap:8px}
+.ref input{flex:1;min-width:0}
+input{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:10px}
+input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.grade{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+@media (min-width:620px){.grade{grid-template-columns:repeat(10,1fr)}}
+.cel{display:grid;gap:4px;text-align:center}
+.cel label{font-family:var(--display);font-weight:700;font-size:1.2rem}
+.cel input{text-align:center;font-family:var(--mono);font-size:1.15rem;padding:10px 2px;width:100%}
+.soma-talao{font-size:.9rem;color:var(--muted)}
+.soma-talao b{color:var(--ink);font-family:var(--mono)}
+.btns{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:14px 10px;cursor:pointer}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.b-go{background:var(--go);color:var(--go-ink);font-size:1.05rem}
+.b-ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.b-danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
+.b-danger.solid{background:var(--danger);color:#fff}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+td.n{font-family:var(--mono);text-align:right}
+td .bar{height:6px;background:var(--accent);border-radius:3px;opacity:.75}
+tfoot td{font-weight:700;border-bottom:0;padding-top:10px}
+.zero{color:var(--muted)}
+.acoes{display:flex;gap:8px;flex-wrap:wrap}
+.acoes button{flex:1 1 140px}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.95rem}
+.hist{display:grid;gap:6px;max-height:300px;overflow:auto}
+.hi{display:flex;justify-content:space-between;gap:10px;font-size:.9rem;border-bottom:1px dashed var(--line);padding-bottom:6px}
+.hi .g{font-family:var(--mono);font-size:.78rem;color:var(--muted);word-break:break-word}
+.hi .t{font-family:var(--mono);font-weight:700;white-space:nowrap}
+.vazio{color:var(--muted);font-size:.9rem}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.9rem}
+textarea{width:100%;font-family:var(--mono);font-size:.8rem;background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px;min-height:200px}
+@media (prefers-reduced-motion:no-preference){button{transition:filter .15s}button:active{filter:brightness(.9)}}
+.topo{display:flex;gap:10px;align-items:start}
+.b-cfg{padding:8px 12px;font-size:.85rem}
+.cfg{display:grid;gap:12px}
+.cfg-linha{display:grid;gap:6px}
+.cfg-linha label{font-size:.85rem;color:var(--muted);font-weight:600}
+.cfg-cores{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.cfg input[type=color]{width:100%;height:44px;padding:4px;cursor:pointer}
+.cfg select,.cfg textarea{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:10px}
+.cfg textarea{min-height:80px;font-family:var(--body);font-size:.95rem}
+.check{display:flex;gap:8px;align-items:center;font-weight:600}
+.check input{width:20px;height:20px}
+.janela{border:1px solid var(--jan);background:color-mix(in srgb,var(--jan) 12%,var(--card))}
+.janela h2{color:var(--jan)}
+.janela p{margin:0;white-space:pre-wrap;line-height:1.5}
+.modo{display:flex;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.modo button{flex:1 1 150px;border-radius:0;background:transparent;color:var(--muted);padding:10px 8px;font-size:.92rem}
+.modo button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+</style>
+</head>
+<body>
+
+
+<div class="wrap" id="telaCalc">
+  <header>
+    <div>
+      <h1 id="tituloPagina">Lançamento de Talão por Grade</h1>
+      <div class="sub" id="nTaloes">0 talões lançados</div>
+    </div>
+    <div class="big"><b id="totalGeral">0</b><span>pares no total</span></div>
+    <button class="b-ghost b-cfg" id="btnCfg">Personalizar</button>
+  </header>
+
+
+  <section class="janela" id="janela" hidden>
+    <h2 id="janTitulo"></h2>
+    <p id="janTexto"></p>
+  </section>
+
+  <section>
+    <h2>Talão atual</h2>
+    <div class="ref"><input id="ref" placeholder="Referência / cor do relatório (ex: 5478 PRIME PRATA DEB BIQ)" autocomplete="off" enterkeyhint="next"></div>
+    <div class="sub" style="margin-top:-6px">Use ← → para voltar ou avançar entre os tamanhos.</div>
+    <div class="modo" role="group" aria-label="Como somar a grade">
+      <button id="modoUnico" aria-pressed="true">Número a número</button>
+      <button id="modoPar" aria-pressed="false">Juntar em pares (33/34, 35/36…)</button>
+    </div>
+    <div class="grade" id="grade"></div>
+    <div class="soma-talao">Este talão: <b id="somaTalao">0</b> pares</div>
+    <div class="btns">
+      <button class="b-go" id="btnSomar">Somar talão</button>
+      <button class="b-ghost" id="btnLimpar">Limpar campos</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Total acumulado</h2>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Tam.</th><th style="text-align:right">Pares</th><th style="width:45%"></th></tr></thead>
+        <tbody id="corpo"></tbody>
+        <tfoot><tr><td>Total geral</td><td class="n" id="rodape">0</td><td></td></tr></tfoot>
+      </table>
+    </div>
+    <div class="acoes">
+      <button class="b-go" id="btnBaixar">Baixar relatório (.txt)</button>
+      <button class="b-ghost" id="btnRel">Ver / copiar relatório</button>
+      <button class="b-danger" id="btnZerar">Zerar tudo</button>
+    </div>
+    <div class="confirm" id="confirmZerar" hidden>
+      Apagar todos os talões e totais?
+      <button class="b-danger solid" id="simZerar">Sim, zerar</button>
+      <button class="b-ghost" id="naoZerar">Cancelar</button>
+    </div>
+    <div id="relBox" hidden>
+      <textarea id="relTxt" readonly></textarea>
+      <button class="b-ghost" id="btnCopiar" style="width:100%;margin-top:8px">Copiar relatório</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Talões lançados</h2>
+    <div class="hist" id="hist"></div>
+    <button class="b-ghost" id="btnDesfazer" hidden>Desfazer último talão</button>
+  </section>
+</div>
+<div class="wrap" id="telaCfg" hidden>
+  <header>
+    <div>
+      <h1>Personalizar</h1>
+      <div class="sub">As mudanças são salvas na hora.</div>
+    </div>
+    <button class="b-ghost b-cfg" id="cfgVoltar">← Voltar</button>
+  </header>
+  <section class="cfg" id="painelCfg">
+    <div class="cfg-linha"><label for="cfgNome">Nome da página</label><input id="cfgNome" maxlength="60"></div>
+    <div class="cfg-cores">
+      <div class="cfg-linha"><label for="cfgCorBotao">Cor do botão Somar</label><input id="cfgCorBotao" type="color"></div>
+      <div class="cfg-linha"><label for="cfgCorDestaque">Cor do total e barras</label><input id="cfgCorDestaque" type="color"></div>
+      <div class="cfg-linha"><label for="cfgTema">Tema</label>
+        <select id="cfgTema"><option value="auto">Automático</option><option value="light">Claro</option><option value="dark">Escuro</option></select></div>
+    </div>
+    <label class="check"><input type="checkbox" id="cfgJanOn"> Mostrar janela personalizada</label>
+    <div class="cfg-linha"><label for="cfgJanTitulo">Título da janela</label><input id="cfgJanTitulo" maxlength="60" placeholder="Ex: Avisos do dia"></div>
+    <div class="cfg-linha"><label for="cfgJanTexto">Texto da janela</label><textarea id="cfgJanTexto" placeholder="Ex: Prioridade hoje: 5478 SARA PRETO"></textarea></div>
+    <div class="cfg-linha" style="max-width:200px"><label for="cfgJanCor">Cor da janela</label><input id="cfgJanCor" type="color"></div>
+    <div class="acoes">
+      <button class="b-ghost" id="cfgPadrao">Restaurar padrão</button>
+      <button class="b-go" id="cfgFechar">Voltar para a calculadora</button>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const TAM=[33,34,35,36,37,38,39,40,41,42];
+const KEY="calc-taloes-v1";
+let taloes=[], refSalva="", modo="unico";
+try{const d=JSON.parse(localStorage.getItem(KEY));
+  if(Array.isArray(d))taloes=d; else if(d){taloes=d.taloes||[];refSalva=d.ref||"";modo=d.modo||"unico"}}catch(e){}
+const $=id=>document.getElementById(id);
+const salvar=()=>{try{localStorage.setItem(KEY,JSON.stringify({taloes,ref:$("ref").value,modo}))}catch(e){}};
+$("ref").value=refSalva;
+$("ref").addEventListener("input",salvar);
+
+// monta os campos da grade
+const grade=$("grade");
+TAM.forEach((t,i)=>{
+  const c=document.createElement("div");c.className="cel";
+  c.innerHTML=`<label for="t${t}">${t}</label><input id="t${t}" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="0" enterkeyhint="${i<9?'next':'done'}" autocomplete="off">`;
+  grade.appendChild(c);
+});
+const campos=TAM.map(t=>$("t"+t));
+const val=el=>{const n=parseInt(el.value,10);return isNaN(n)||n<0?0:n};
+
+campos.forEach((el,i)=>{
+  el.addEventListener("input",()=>{el.value=el.value.replace(/\D/g,"");atualizaTalao()});
+  el.addEventListener("focus",()=>el.select());
+  el.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){e.preventDefault();
+      if(i<campos.length-1)campos[i+1].focus(); else somar();}
+    else if(e.key==="ArrowLeft"||e.key==="ArrowUp"){e.preventDefault();
+      if(i>0)campos[i-1].focus(); else $("ref").focus();}
+    else if(e.key==="ArrowRight"||e.key==="ArrowDown"){e.preventDefault();
+      if(i<campos.length-1)campos[i+1].focus();}
+  });
+});
+$("ref").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="ArrowDown"){e.preventDefault();campos[0].focus()}});
+
+function atualizaTalao(){$("somaTalao").textContent=campos.reduce((s,el)=>s+val(el),0)}
+
+function totais(){
+  const tot=TAM.map(()=>0);
+  taloes.forEach(tl=>tl.q.forEach((q,i)=>tot[i]+=q));
+  return tot;
+}
+
+// linhas do total: número a número ou em pares de tamanhos (33/34, 35/36...)
+function linhas(){
+  const tot=totais();
+  if(modo!=="par")return TAM.map((t,i)=>({rotulo:String(t),total:tot[i]}));
+  const L=[];
+  for(let i=0;i<TAM.length;i+=2)L.push({rotulo:`${TAM[i]}/${TAM[i+1]}`,total:tot[i]+(tot[i+1]||0)});
+  return L;
+}
+function render(){
+  const lin=linhas(), geral=lin.reduce((a,l)=>a+l.total,0), max=Math.max(1,...lin.map(l=>l.total));
+  $("corpo").innerHTML=lin.map(l=>`<tr class="${l.total?'':'zero'}"><td>${l.rotulo}</td><td class="n">${l.total}</td><td><div class="bar" style="width:${l.total/max*100}%"></div></td></tr>`).join("");
+  $("modoUnico").setAttribute("aria-pressed",String(modo!=="par"));
+  $("modoPar").setAttribute("aria-pressed",String(modo==="par"));
+  $("rodape").textContent=geral;
+  $("totalGeral").textContent=geral;
+  $("nTaloes").textContent=`${taloes.length} ${taloes.length===1?'talão lançado':'talões lançados'}`;
+  const h=$("hist");
+  if(!taloes.length){h.innerHTML='<div class="vazio">Nenhum talão ainda. Digite as quantidades acima e toque em Somar talão.</div>'}
+  else h.innerHTML=taloes.map((tl,k)=>{
+    const g=TAM.map((t,i)=>tl.q[i]?`${t}:${tl.q[i]}`:null).filter(Boolean).join("  ");
+    const total=tl.q.reduce((a,b)=>a+b,0);
+    return `<div class="hi"><div><div>#${k+1}${tl.ref?' · '+esc(tl.ref):''} <span class="g">${tl.h}</span></div><div class="g">${g}</div></div><div class="t">${total}</div></div>`;
+  }).reverse().join("");
+  $("btnDesfazer").hidden=!taloes.length;
+  if(!$("relBox").hidden)$("relTxt").value=relatorio();
+}
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,1800)}
+
+function limparCampos(){campos.forEach(el=>el.value="");atualizaTalao()}
+
+function somar(){
+  const q=campos.map(val);
+  if(!q.some(Boolean)){toast("Digite pelo menos uma quantidade");campos[0].focus();return}
+  const d=new Date();
+  taloes.push({q,ref:$("ref").value.trim(),h:d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}),d:d.toISOString()});
+  salvar();limparCampos();render();
+  toast(`Talão somado: ${q.reduce((a,b)=>a+b,0)} pares`);
+  campos[0].focus();
+}
+
+function relatorio(){
+  const lin=linhas(), geral=lin.reduce((a,l)=>a+l.total,0);
+  const d=new Date(), p=n=>String(n).padStart(2,"0");
+  const dh=`${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  const ref=$("ref").value.trim()||"SEM REFERÊNCIA";
+  const L=[];
+  L.push(`    ${ref}`);
+  L.push(`Data/Hora do Registro: ${dh}`);
+  L.push(`TAMANHO`.padEnd(22)+`TOTAL ACUMULADO`);
+  L.push("-".repeat(40));
+  lin.forEach(l=>L.push(`Tamanho ${l.rotulo}`.padEnd(22)+String(l.total).padEnd(6)+"pares"));
+  L.push("-".repeat(40));
+  L.push(`TOTAL GERAL DA PRODUÇÃO: ${geral} pares`);
+  L.push("=".repeat(40));
+  return L.join("\r\n")+"\r\n";
+}
+
+$("btnSomar").onclick=somar;
+$("btnLimpar").onclick=()=>{limparCampos();campos[0].focus()};
+$("btnDesfazer").onclick=()=>{taloes.pop();salvar();render();toast("Último talão desfeito")};
+$("btnZerar").onclick=()=>{$("confirmZerar").hidden=false};
+$("naoZerar").onclick=()=>{$("confirmZerar").hidden=true};
+$("modoUnico").onclick=()=>{modo="unico";salvar();render()};
+$("modoPar").onclick=()=>{modo="par";salvar();render()};
+$("simZerar").onclick=()=>{taloes=[];$("ref").value="";salvar();limparCampos();$("confirmZerar").hidden=true;render();toast("Tudo zerado")};
+$("btnRel").onclick=()=>{const b=$("relBox");b.hidden=!b.hidden;if(!b.hidden)$("relTxt").value=relatorio()};
+let dl=null;
+if(window.claude&&window.claude.use)window.claude.use("downloads").then(d=>dl=d).catch(()=>{});
+$("btnBaixar").onclick=async()=>{
+  if(!taloes.length){toast("Nenhum talão para salvar");return}
+  const txt=relatorio();
+  const nome=($("ref").value.trim()||"relatorio-taloes").replace(/[\\/:*?"<>|]/g,"-")+".txt";
+  const naJanelaDoClaude=window.self!==window.top;
+  if(naJanelaDoClaude){
+    if(dl){try{await dl.save({filename:nome,data:"\ufeff"+txt});toast("Relatório salvo: "+nome)}
+      catch(e){if(e&&e.code!=="declined"){$("relBox").hidden=false;$("relTxt").value=txt;toast("Não deu para baixar aqui, use Copiar")}}}
+    else{$("relBox").hidden=false;$("relTxt").value=txt;toast("Download indisponível aqui, use Copiar")}
+    return;
+  }
+  const url=URL.createObjectURL(new Blob(["\ufeff"+txt],{type:"text/plain;charset=utf-8"}));
+  const el=document.createElement("a");el.href=url;el.download=nome;document.body.appendChild(el);el.click();el.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  toast("Relatório baixado: "+nome);
+};
+$("btnCopiar").onclick=()=>{
+  const ta=$("relTxt");
+  const fallback=()=>{ta.focus();ta.select();toast("Texto selecionado, use Copiar")};
+  try{navigator.clipboard.writeText(ta.value).then(()=>toast("Relatório copiado"),fallback)}catch(e){fallback()}
+};
+// ---------- Personalização ----------
+const CFG_KEY="calc-taloes-cfg";
+const PADRAO={nome:"Lançamento de Talão por Grade",corBotao:"#1f8a4c",corDestaque:"#c4581d",tema:"auto",janOn:false,janTitulo:"Avisos",janTexto:"",janCor:"#2f6fb5"};
+let cfg={...PADRAO};
+try{Object.assign(cfg,JSON.parse(localStorage.getItem(CFG_KEY))||{})}catch(e){}
+const corTextoSobre=hex=>{const n=parseInt(hex.slice(1),16),r=n>>16&255,g=n>>8&255,b=n&255;
+  return (0.299*r+0.587*g+0.114*b)>160?"#111111":"#ffffff"};
+function aplicaCfg(){
+  const r=document.documentElement;
+  $("tituloPagina").textContent=cfg.nome||PADRAO.nome;
+  document.title=cfg.nome||PADRAO.nome;
+  const mudouCor=cfg.corBotao!==PADRAO.corBotao||cfg.corDestaque!==PADRAO.corDestaque;
+  if(mudouCor){r.style.setProperty("--go",cfg.corBotao);r.style.setProperty("--go-ink",corTextoSobre(cfg.corBotao));r.style.setProperty("--accent",cfg.corDestaque)}
+  else ["--go","--go-ink","--accent"].forEach(v=>r.style.removeProperty(v));
+  if(cfg.tema==="auto")r.removeAttribute("data-theme"); else r.setAttribute("data-theme",cfg.tema);
+  r.style.setProperty("--jan",cfg.janCor);
+  $("janela").hidden=!(cfg.janOn&&(cfg.janTitulo||cfg.janTexto));
+  $("janTitulo").textContent=cfg.janTitulo;$("janTexto").textContent=cfg.janTexto;
+}
+function preencheCfg(){
+  $("cfgNome").value=cfg.nome;$("cfgCorBotao").value=cfg.corBotao;$("cfgCorDestaque").value=cfg.corDestaque;
+  $("cfgTema").value=cfg.tema;$("cfgJanOn").checked=cfg.janOn;$("cfgJanTitulo").value=cfg.janTitulo;
+  $("cfgJanTexto").value=cfg.janTexto;$("cfgJanCor").value=cfg.janCor;
+}
+const salvaCfg=()=>{try{localStorage.setItem(CFG_KEY,JSON.stringify(cfg))}catch(e){}};
+[["cfgNome","nome"],["cfgCorBotao","corBotao"],["cfgCorDestaque","corDestaque"],["cfgTema","tema"],
+ ["cfgJanTitulo","janTitulo"],["cfgJanTexto","janTexto"],["cfgJanCor","janCor"]].forEach(([id,k])=>{
+  $(id).addEventListener("input",()=>{cfg[k]=$(id).value;
+    if(k==="janTitulo"||k==="janTexto"){if(cfg.janTitulo||cfg.janTexto){cfg.janOn=true;$("cfgJanOn").checked=true}}
+    aplicaCfg();salvaCfg()});
+});
+$("cfgJanOn").addEventListener("change",()=>{cfg.janOn=$("cfgJanOn").checked;aplicaCfg();salvaCfg()});
+function mostraTela(cfgAberta){
+  $("telaCalc").hidden=cfgAberta;$("telaCfg").hidden=!cfgAberta;window.scrollTo(0,0);
+  if(cfgAberta){preencheCfg();$("cfgNome").focus()}else campos[0].focus();
+}
+$("btnCfg").onclick=()=>mostraTela(true);
+$("cfgFechar").onclick=()=>mostraTela(false);
+$("cfgVoltar").onclick=()=>mostraTela(false);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("telaCfg").hidden)mostraTela(false)});
+if(location.hash==="#personalizar")mostraTela(true);
+$("cfgPadrao").onclick=()=>{cfg={...PADRAO};preencheCfg();aplicaCfg();salvaCfg();toast("Aparência padrão restaurada")};
+aplicaCfg();
+
+render();atualizaTalao();
+
+// app instalável: funciona offline e se atualiza sozinho
+if("serviceWorker" in navigator&&location.protocol==="https:"){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+</body>
+</html>
